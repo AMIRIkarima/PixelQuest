@@ -1,4 +1,4 @@
-package com.PixelQuest.Entity;
+package com.pixelquest.Entity;
 
 import jakarta.persistence.*;
 

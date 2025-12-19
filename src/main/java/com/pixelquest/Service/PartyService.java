@@ -1,13 +1,14 @@
-package com.PixelQuest.Service;
+package com.pixelquest.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.PixelQuest.Entity.*;
-import com.PixelQuest.Repository.PartyRepository;
-import com.PixelQuest.Repository.PlayerRepository;
-import com.PixelQuest.Repository.PointSampleRepository;
-import com.PixelQuest.DTO.PointSampleDTO;
+import com.pixelquest.Entity.*;
+import com.pixelquest.Repository.PartyRepository;
+import com.pixelquest.Repository.PlayerRepository;
+import com.pixelquest.Repository.PointSampleRepository;
+import com.pixelquest.DTO.PointSampleDTO;
+
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,9 +30,9 @@ public class PartyService {
     private final double A = 0.2;
     private final double B = 0.1;
 
-    /* ===============================
-       1️⃣ Start a pointing experiment
-       =============================== */
+    /*
+       Start a pointing experiment
+    */
     public Party startParty(
             Long playerId,
             Difficulty difficulty,
@@ -55,9 +56,9 @@ public class PartyService {
         return partyRepository.save(party);
     }
 
-    /* ===============================
-       2️⃣ Store trajectory samples
-       =============================== */
+
+    /*  Store trajectory samples
+        */
     public void addSamples(Long partyId, List<PointSampleDTO> samples) {
 
         Party party = partyRepository.findById(partyId)
@@ -74,9 +75,8 @@ public class PartyService {
         }
     }
 
-    /* ===============================
-       3️⃣ Finish experiment & compute XP
-       =============================== */
+    /*  Finish experiment & compute XP
+       */
     public Party finishParty(Long partyId) {
 
         Party party = partyRepository.findById(partyId)
@@ -123,9 +123,8 @@ public class PartyService {
         return party;
     }
 
-    /* ===============================
-       4️⃣ Update player level
-       =============================== */
+    /*  Update player level
+        */
     public Player updatePlayerLevel(Long playerId, int gainedScore) {
 
         Player player = playerRepository.findById(playerId)
@@ -141,9 +140,47 @@ public class PartyService {
 
         return playerRepository.save(player);
     }
-    /* ===============================
-       5️⃣ Analytics: Compute Fitts Parameters
-       =============================== */
+
+    /*  Analytics: Compute Fitts Parameters
+        */
+    // 1. Fetch all parties for the dashboard
+    public List<Party> getPartiesByPlayer(Long playerId) {
+        return partyRepository.findByPlayerId(playerId);
+    }
+
+    // 2. Calculate Index of Difficulty (ID) on the fly
+    public double calculateID(Party party) {
+        double distance = Math.hypot(
+                party.getTargetPoint().getX() - party.getStartPoint().getX(),
+                party.getTargetPoint().getY() - party.getStartPoint().getY()
+        );
+        // ID = log2(D + 1)
+        return Math.log(distance + 1) / Math.log(2);
+    }
+
+    // 3. Calculate Movement Time (MT) on the fly
+    public double calculateMT(Party party) {
+        List<PointSample> samples = pointSampleRepository.findByPartyId(party.getId());
+        if (samples.isEmpty() || samples.size() < 2) return 0.0;
+
+        long t0 = samples.get(0).getTimestamp();
+        long tEnd = samples.get(samples.size() - 1).getTimestamp();
+        return (tEnd - t0) / 1000.0; // Seconds
+    }
+
+    // 4. Get the stored A from the Player
+    public Double getInterceptA(Long playerId) {
+        return playerRepository.findById(playerId)
+                .map(Player::getFittsA)
+                .orElse(0.0);
+    }
+
+    // 5. Get the stored B from the Player
+    public Double getSlopeB(Long playerId) {
+        return playerRepository.findById(playerId)
+                .map(Player::getFittsB)
+                .orElse(0.0);
+    }
     private void updatePlayerFittsParameters(Player player) {
         List<Party> history = partyRepository.findByPlayerId(player.getId());
 
@@ -174,9 +211,8 @@ public class PartyService {
             // We need to retrieve MT. Since it's not stored directly in Party,
             // we re-calculate it or you should store 'movementTime' in Party entity.
             // For now, let's estimate it from samples if available, or assume you add a field to Party.
-            // *Recommendation*: Add 'private Double movementTime' to Party entity to avoid fetching samples loop here.
 
-            // Assuming you added movementTime to Party, or calculating it from samples (expensive):
+
             List<PointSample> samples = pointSampleRepository.findByPartyId(p.getId());
             if(samples.isEmpty()) continue;
 
@@ -206,4 +242,28 @@ public class PartyService {
         player.setFittsB(slopeB);
         playerRepository.save(player);
 }
+
+
+    public Party startPartyWithRandomTarget(Long playerId, Difficulty difficulty) {
+        // 1. Generate random coordinates based on difficulty
+        // Higher difficulty could mean further distance
+        int range = (int) (difficulty.getMultiplier() * 100);
+
+        int startX = 0;
+        int startY = 0;
+        int targetX = (int) (Math.random() * range) + 20; // Ensure at least 20px distance
+        int targetY = (int) (Math.random() * range) + 20;
+
+        // 2. Call your existing startParty method
+        return startParty(playerId, difficulty, startX, startY, targetX, targetY);
+    }
+
+    public Party findLatestActiveParty(Long playerId) {
+        // Finds the most recent party for this player that hasn't been finished (score is null)
+        return partyRepository.findByPlayerId(playerId).stream()
+                .filter(p -> p.getScore() == null)
+                .sorted((p1, p2) -> p2.getCreationDate().compareTo(p1.getCreationDate()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No active party found for player"));
+    }
 }

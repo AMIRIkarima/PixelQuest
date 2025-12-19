@@ -1,17 +1,17 @@
-package com.PixelQuest.Controller;
+package com.pixelquest.Controller;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import com.PixelQuest.Entity.Party;
-import com.PixelQuest.Entity.Difficulty;
+import com.pixelquest.Entity.Party;
+import com.pixelquest.Entity.Difficulty;
 
 
-import com.PixelQuest.Service.PartyService;
+import com.pixelquest.Service.PartyService;
 
-import com.PixelQuest.DTO.PointSampleDTO;
+import com.pixelquest.DTO.PointSampleDTO;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,31 +23,28 @@ public class PartyController {
     @Autowired
     private PartyService partyService;
 
-    // 1. Start a new game
-    // Call this when the target appears on the OLED
+    // STEP 1: Mobile App calls this to start a game
     @PostMapping("/start")
-    public Party startParty(
-            @RequestParam Long playerId,
-            @RequestParam Difficulty difficulty,
-            @RequestParam int startX,
-            @RequestParam int startY,
-            @RequestParam int targetX,
-            @RequestParam int targetY
-    ) {
-        return partyService.startParty(playerId, difficulty, startX, startY, targetX, targetY);
+    public Party startParty(@RequestParam Long playerId, @RequestParam Difficulty difficulty) {
+        // Logic inside service should generate targetX and targetY based on difficulty
+        return partyService.startPartyWithRandomTarget(playerId,difficulty);
     }
 
-    // 2. Send trajectory samples
-    // Call this from the ESP32/Client once the target is reached
+    // STEP 2: ESP32 calls this to send the trajectory points
     @PostMapping("/{partyId}/samples")
     public void addSamples(@PathVariable Long partyId, @RequestBody List<PointSampleDTO> samples) {
         partyService.addSamples(partyId, samples);
     }
 
-    // 3. Finish game & Calculate Score/Analytics
-    // Call this immediately after sending samples
+    // STEP 3: Triggered after samples are sent to calculate score
     @PostMapping("/{partyId}/finish")
     public Party finishParty(@PathVariable Long partyId) {
         return partyService.finishParty(partyId);
+    }
+
+    // STEP 4: ESP32 calls this to know what to draw on OLED
+    @GetMapping("/active/{playerId}")
+    public Party getActiveParty(@PathVariable Long playerId) {
+        return partyService.findLatestActiveParty(playerId);
     }
 }

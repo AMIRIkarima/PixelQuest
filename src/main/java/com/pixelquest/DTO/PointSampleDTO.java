@@ -1,4 +1,4 @@
-package com.PixelQuest.DTO;
+package com.pixelquest.DTO;
 
 public class PointSampleDTO {
     private int x;

@@ -1,4 +1,4 @@
-package com.PixelQuest.Entity;
+package com.pixelquest.Entity;
 
 public enum Difficulty {
     EASY(1.0),

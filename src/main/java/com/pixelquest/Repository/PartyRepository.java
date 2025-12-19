@@ -1,6 +1,6 @@
-package com.PixelQuest.Repository;
+package com.pixelquest.Repository;
 
-import com.PixelQuest.Entity.Party;
+import com.pixelquest.Entity.Party;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

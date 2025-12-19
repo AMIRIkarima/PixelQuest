@@ -1,10 +1,10 @@
-package com.PixelQuest.Service;
+package com.pixelquest.Service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.PixelQuest.Entity.Player;
-import com.PixelQuest.Repository.PlayerRepository;
+import com.pixelquest.Entity.Player;
+import com.pixelquest.Repository.PlayerRepository;
 
 @Service
 public class PlayerService {

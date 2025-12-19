@@ -1,5 +1,5 @@
-package com.PixelQuest.Repository;
-import com.PixelQuest.Entity.PointSample;
+package com.pixelquest.Repository;
+import com.pixelquest.Entity.PointSample;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
