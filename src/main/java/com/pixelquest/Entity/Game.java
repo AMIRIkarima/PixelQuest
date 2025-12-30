@@ -1,9 +1,9 @@
 package com.pixelquest.Entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 public class Game {
@@ -21,6 +21,7 @@ public class Game {
 
     @ManyToOne
     @JoinColumn(name = "player_id")
+    @JsonBackReference
     private Player player;
 
     @Embedded
@@ -108,11 +109,5 @@ public class Game {
     public Long getPlayerId() {
         return (player != null) ? player.getId() : null;
     }
-//    public List<PointSample> getSamples() {
-//        return samples;
-//    }
-//    public void setSamples(List<PointSample> samples) {
-//        this.samples = samples;
-//    }
 
 }

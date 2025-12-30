@@ -62,7 +62,7 @@ public class GameService {
      * ESP32: Polls for the active mission started by the mobile app.
      */
     public Game getActiveGameForPlayer(Long playerId) {
-        return gameRepository.findByPlayerId(playerId).stream()
+        return gameRepository.findByPlayer_Id(playerId).stream()
                 .filter(p -> p.getScore() == null)
                 .sorted((p1, p2) -> p2.getCreationDate().compareTo(p1.getCreationDate()))
                 .findFirst()
@@ -77,30 +77,74 @@ public class GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
 
-        // Store direct metrics from hardware
+        // 1. Store direct metrics from hardware
         game.setMovementTime(timeSec);
 
-        // Calculate Index of Difficulty (ID) -> ID = log2(D + 1)
+        // 2. Calculate Index of Difficulty (ID) -> ID = log2(D + 1)
         double id = Math.log(distance + 1) / Math.log(2);
         game.setIndexDifficulty(id);
 
-        // Calculate Expected Time using Player's personal a & b parameters (or defaults)
-        double a = (game.getPlayer().getFittsA() != null) ? game.getPlayer().getFittsA() : DEFAULT_A;
-        double b = (game.getPlayer().getFittsB() != null) ? game.getPlayer().getFittsB() : DEFAULT_B;
+        // 3. Calculate Expected Time using Player's current parameters
+        // We use the existing values in the Player entity
+        double a = (game.getPlayer().getFittsA() != null) ? game.getPlayer().getFittsA() : 0.5; // Default 0.5
+        double b = (game.getPlayer().getFittsB() != null) ? game.getPlayer().getFittsB() : 0.2; // Default 0.2
         double expectedTime = a + b * id;
 
-        // XP computation: Difficulty Multiplier * Base XP * Performance Ratio
+        // 4. XP computation
         double xp = game.getDifficulty().getMultiplier() * 50 * (expectedTime / timeSec);
-        xp = Math.max(0, Math.min(500, xp)); // Cap XP gain per game
+        xp = Math.max(0, Math.min(500, xp));
 
         game.setScore(xp);
+
+        // Save the game first so it is included in the regression math
         gameRepository.save(game);
 
-        // Update player's global progress
+        // 5. Update player's global level progress
         updatePlayerLevel(game.getPlayer().getId(), (int) xp);
+
+        // 6. Recalculate and update Player's Fitts A and B (The Regression)
         updatePlayerFittsParameters(game.getPlayer());
 
         return game;
+    }
+
+    /**
+     * ANALYTICS: Updates the player's personal Fitts parameters (a and b)
+     * using Linear Regression on their game history.
+     */
+    private void updatePlayerFittsParameters(Player player) {
+        // Fetch all games for this player that have valid data
+        List<Game> validGames = gameRepository.findByPlayer_Id(player.getId()).stream()
+                .filter(g -> g.getMovementTime() != null && g.getIndexDifficulty() != null)
+                .toList();
+
+        // We need at least 2 points to calculate a trend (slope and intercept)
+        if (validGames.size() >= 2) {
+            double n = validGames.size();
+            double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+
+            for (Game g : validGames) {
+                double x = g.getIndexDifficulty();
+                double y = g.getMovementTime();
+                sumX += x;
+                sumY += y;
+                sumXY += (x * y);
+                sumX2 += (x * x);
+            }
+
+            // Linear Regression Formulas
+            double denominator = (n * sumX2 - Math.pow(sumX, 2));
+
+            // Avoid division by zero if all IDs are the same
+            if (denominator != 0) {
+                double b = (n * sumXY - sumX * sumY) / denominator;
+                double a = (sumY - b * sumX) / n;
+
+                player.setFittsA(a);
+                player.setFittsB(b);
+                playerRepository.save(player); // Persistent update to the DB
+            }
+        }
     }
 
     /**
@@ -120,42 +164,11 @@ public class GameService {
         playerRepository.save(player);
     }
 
-    /**
-     * ANALYTICS: Updates the player's personal Fitts parameters (a and b)
-     * using Linear Regression on their game history.
-     */
-    private void updatePlayerFittsParameters(Player player) {
-        List<Game> history = gameRepository.findByPlayerId(player.getId()).stream()
-                .filter(p -> p.getScore() != null && p.getMovementTime() != null && p.getIndexDifficulty() != null)
-                .toList();
-
-        if (history.size() < 2) return; // Need at least two data points for a trend line
-
-        double sumID = 0, sumMT = 0, sumIDMT = 0, sumIDSq = 0;
-        int n = history.size();
-
-        for (Game g : history) {
-            double ID = g.getIndexDifficulty();
-            double MT = g.getMovementTime();
-            sumID += ID;
-            sumMT += MT;
-            sumIDMT += (ID * MT);
-            sumIDSq += (ID * ID);
-        }
-
-        // Least Squares formulas
-        double slopeB = (n * sumIDMT - sumID * sumMT) / (n * sumIDSq - sumID * sumID);
-        double interceptA = (sumMT - slopeB * sumID) / n;
-
-        player.setFittsA(interceptA);
-        player.setFittsB(slopeB);
-        playerRepository.save(player);
-    }
 
     // --- Analytics Helper Methods for Controllers ---
 
     public List<Game> getGamesByPlayer(Long playerId) {
-        return gameRepository.findByPlayerId(playerId);
+        return gameRepository.findByPlayer_Id(playerId);
     }
 
     public Double getInterceptA(Long playerId) {

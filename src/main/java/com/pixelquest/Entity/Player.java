@@ -1,5 +1,6 @@
 package com.pixelquest.Entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -16,6 +17,7 @@ public class Player {
     private PlayerLevel playerlevel;
 
     @OneToMany(mappedBy = "player", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private List<Game> games;
 
 

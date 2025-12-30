@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.*;
 import com.pixelquest.Entity.Player;
 import com.pixelquest.Service.PlayerService;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/players")
 @CrossOrigin(origins = "*")
@@ -14,6 +16,11 @@ public class PlayerController {
 
     @Autowired
     private PlayerService playerService;
+
+    @GetMapping
+    public List<Player> getAllPlayers() {
+        return playerService.getAllPlayers();
+    }
 
     @PostMapping
     public Player create(@RequestBody Player p) {
