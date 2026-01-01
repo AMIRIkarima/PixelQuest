@@ -1,5 +1,6 @@
 package com.pixelquest.Controller;
 
+import com.pixelquest.Entity.Game;
 import com.pixelquest.Service.GameService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -33,5 +34,11 @@ public class AnalyticsController {
                 "interceptA", gameService.getInterceptA(playerId),
                 "slopeB", gameService.getSlopeB(playerId)
     );
+  }
+
+  // Fetch the history of games by Player Id
+  @GetMapping("/history/{playerId}")
+  public List<Game> getPlayerHistory(@PathVariable Long playerId) {
+    return gameService.getGamesByPlayer(playerId);
   }
 }

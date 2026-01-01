@@ -16,16 +16,15 @@ public class Player {
     @Embedded
     private PlayerLevel playerlevel;
 
-    @OneToMany(mappedBy = "player", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "player", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Game> games;
 
 
+    private Double fittsA;
+    private Double fittsB;
 
-    private Double fittsA; // Intercept (a)
-    private Double fittsB; // Slope (b)
 
-    // Getters & Setters
     public void setId(Long id) {this.id = id;}
     public Double getFittsA() { return fittsA; }
     public void setFittsA(Double fittsA) { this.fittsA = fittsA; }

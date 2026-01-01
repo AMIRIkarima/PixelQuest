@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import com.pixelquest.Entity.Player;
 import com.pixelquest.Repository.PlayerRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -25,5 +26,13 @@ public class PlayerService {
 
     public List<Player> getAllPlayers() {
         return playerRepository.findAll();
+    }
+
+    @Transactional
+    public void deletePlayer(Long id) {
+        if (!playerRepository.existsById(id)) {
+            throw new RuntimeException("Player not found with id: " + id);
+        }
+        playerRepository.deleteById(id);
     }
 }
