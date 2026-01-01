@@ -66,9 +66,8 @@ public class GameService {
                 .filter(p -> p.getScore() == null)
                 .sorted((p1, p2) -> p2.getCreationDate().compareTo(p1.getCreationDate()))
                 .findFirst()
-            .orElseThrow(() -> new RuntimeException("No active game found for this player"));
+                .orElse(null);
     }
-
     /**
      * BACKEND: Fitts's Law Calculation and XP reward.
      * Called by ESP32 providing the direct movement time and distance achieved.
